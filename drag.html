@@ -25,6 +25,7 @@ var container, scene, camera, renderer, controls, stats;
 var clock = new THREE.Clock();
 // custom global variables
 var cube;
+var plane;
 
 init();
 animate();
@@ -163,16 +164,26 @@ function init() {
 					flatShading: true
 				} );
 
-	var plane = new THREE.Mesh( planeGeo, planeMaterial );
+	plane = new THREE.Mesh( planeGeo, planeMaterial );
 	scene.add( plane );
 	objects.push(plane);
 	
 	
 	var dragControls = new THREE.DragControls(objects, camera, renderer.domElement);
 
+	console.log(dragControls);
 	
 	dragControls.fart = function shit(e) {
 		console.log(fuck);
+	}
+	
+	dragControls.addEventListener( 'drag', shitHappening );
+
+	function shitHappening(event) {
+		console.log(event);
+		plane.position.x = 0;
+		plane.position.y = 0;
+	
 	}
 
 
@@ -201,6 +212,8 @@ function animate() {
 function update() {
 	controls.update();
 	stats.update();
+	
+
 }
 
 function render() {
