@@ -1,0 +1,260 @@
+
+<!doctype html>
+<html lang="en">
+<head>
+	<title>Lines test</title>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+</head>
+<body>
+
+<script src="js/three.js"></script>
+<script src="js/Detector.js"></script>
+<script src="js/stats.min.js"></script>
+<script src="js/controls/OrbitControls.js"></script>
+<script src="js/renderers/CanvasRenderer.js"></script>
+
+<script src="js/controls/DragControls.js"></script>
+
+
+<div id="ThreeJS" style="position: absolute; left:0px; top:0px"></div>
+<script>
+
+// standard global variables
+var container, scene, camera, renderer, controls, raycaster, stats;
+var clock = new THREE.Clock();
+// custom global variables
+var cube;
+
+init();
+animate();
+
+// FUNCTIONS 		
+function init() {
+	// SCENE
+	scene = new THREE.Scene();
+	
+	// CAMERA
+	var SCREEN_WIDTH = window.innerWidth, SCREEN_HEIGHT = window.innerHeight;
+	var VIEW_ANGLE = 45, ASPECT = SCREEN_WIDTH / SCREEN_HEIGHT, NEAR = 0.1, FAR = 20000;
+	camera = new THREE.PerspectiveCamera( VIEW_ANGLE, ASPECT, NEAR, FAR);
+	scene.add(camera);
+	camera.position.set(0,150,400);
+	camera.lookAt(scene.position);	
+	
+	// Interaction
+	var raycaster = new THREE.Raycaster();
+	var mouse = new THREE.Vector2();
+	
+	// RENDERER
+	if ( Detector.webgl ) {
+		renderer = new THREE.WebGLRenderer( {antialias:true} );
+		console.log('using webGL');
+		
+		
+	} else {
+		console.log('using canvas');
+		renderer = new THREE.CanvasRenderer(); 
+	}
+	renderer.setSize(SCREEN_WIDTH, SCREEN_HEIGHT);
+	container = document.getElementById( 'ThreeJS' );
+	container.appendChild( renderer.domElement );
+
+
+	// CONTROLS
+	controls = new THREE.OrbitControls( camera, renderer.domElement );
+	
+	// STATS
+	stats = new Stats();
+	stats.domElement.style.position = 'absolute';
+	stats.domElement.style.bottom = '0px';
+	stats.domElement.style.zIndex = 100;
+	container.appendChild( stats.domElement );
+	
+	// LIGHT
+	var light = new THREE.PointLight(0xffffff);
+	light.position.set(0,250,0);
+	scene.add(light);
+	
+	// FLOOR
+	// don't add floor -- easier to view result.
+	scene.fog = new THREE.FogExp2( 0x9999ff, 0.00025 );
+	
+	//
+	var objects = [];
+	
+	
+	////////////
+	// LIGHTS //
+	////////////
+	var lights = [];
+		lights[ 0 ] = new THREE.PointLight( 0xffffff, 1, 0 );
+		lights[ 1 ] = new THREE.PointLight( 0xffffff, 1, 0 );
+		lights[ 2 ] = new THREE.PointLight( 0xffffff, 1, 0 );
+
+		lights[ 0 ].position.set( 0, 200, 0 );
+		lights[ 1 ].position.set( 100, 200, 100 );
+		lights[ 2 ].position.set( - 100, - 200, - 100 );
+
+		scene.add( lights[ 0 ] );
+		scene.add( lights[ 1 ] );
+		scene.add( lights[ 2 ] );
+	
+	
+	////////////
+	// XYZ //
+	////////////
+	
+	var lineGeometry = new THREE.Geometry();
+	var vertArray = lineGeometry.vertices;
+	vertArray.push( new THREE.Vector3(0, 0, 0), new THREE.Vector3(100, 0, 0) );
+	lineGeometry.computeLineDistances();
+	var lineMaterial = new THREE.LineBasicMaterial( { color: 0xFF0000 } );
+	var line = new THREE.Line( lineGeometry, lineMaterial );
+	scene.add(line);
+	
+	var lineGeometry = new THREE.Geometry();
+	var vertArray = lineGeometry.vertices;
+	vertArray.push( new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 100, 0) );
+	lineGeometry.computeLineDistances();
+	var lineMaterial = new THREE.LineBasicMaterial( { color: 0x00FF00 } );
+	var line = new THREE.Line( lineGeometry, lineMaterial );
+	scene.add(line);
+	
+	var lineGeometry = new THREE.Geometry();
+	var vertArray = lineGeometry.vertices;
+	vertArray.push( new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 100) );
+	lineGeometry.computeLineDistances();
+	var lineMaterial = new THREE.LineBasicMaterial( { color: 0x0000FF } );
+	var line = new THREE.Line( lineGeometry, lineMaterial );
+	scene.add(line);
+
+	var lineGeometry = new THREE.Geometry();
+	var vertArray = lineGeometry.vertices;
+	vertArray.push( new THREE.Vector3(0, 0, 0), new THREE.Vector3(100, 100, 100) );	lineGeometry.computeLineDistances();
+	var lineMaterial = new THREE.LineDashedMaterial( { color: 0x00FFFF, dashSize: 4, gapSize: 2 } );
+	var line = new THREE.Line( lineGeometry, lineMaterial );
+	scene.add(line);
+		
+	
+	
+	
+	////////////
+	// Wire BOX //
+	////////////
+
+	var cubeGeometry = new THREE.CubeGeometry( 100, 100, 100 );
+	// use LineBasicMaterial if no dashes are desired
+	var dashMaterial = new THREE.LineDashedMaterial( { color: 0xFFFFFF, dashSize: 2, gapSize: 3 } );
+	cube = new THREE.Line( geo2line(cubeGeometry), dashMaterial, THREE.LineSegments );
+	//cube.position.set(25,25,25);
+	scene.add(cube);
+	
+	window.addEventListener( 'resize', onWindowResize, false );
+	
+	////////////
+	// PLANE //
+	////////////
+	var planeGeo = new THREE.PlaneGeometry( 100, 100);
+	var planeMaterial = new THREE.MeshPhongMaterial( {
+					color: 0x156289,
+					emissive: 0x072534,
+					side: THREE.DoubleSide,
+					flatShading: true
+				} );
+
+	var plane = new THREE.Mesh( planeGeo, planeMaterial );
+	scene.add( plane );
+	
+	
+	
+	var dragControls = new THREE.DragControls(objects, camera, renderer.domElement);
+
+	dragControls.addEventListener( 'dragstart', dragStartCallback );
+	dragControls.addEventListener( 'dragend', dragendCallback );
+	
+	function dragStartCallback(event) {
+		controls.enabled = false;
+	}
+
+	function dragendCallback(event) {
+	   controls.enabled = true;
+	}
+}
+
+
+
+function onMouseMove( evt ) {
+	evt.preventDefault();
+	console.log(what);
+	var array = getMousePosition( container, evt.clientX, evt.clientY );
+	onClickPosition.fromArray( array );
+	var intersects = getIntersects( onClickPosition, scene.children );
+	if ( intersects.length > 0 && intersects[ 0 ].uv ) {
+		var uv = intersects[ 0 ].uv;
+		intersects[ 0 ].object.material.map.transformUv( uv );
+		canvas.setCrossPosition( uv.x, uv.y );
+	}
+}
+
+var getMousePosition = function ( dom, x, y ) {
+	var rect = dom.getBoundingClientRect();
+	return [ ( x - rect.left ) / rect.width, ( y - rect.top ) / rect.height ];
+};
+
+var getIntersects = function ( point, objects ) {
+	mouse.set( ( point.x * 2 ) - 1, - ( point.y * 2 ) + 1 );
+	raycaster.setFromCamera( mouse, camera );
+	return raycaster.intersectObjects( objects );
+
+};
+
+function animate() {
+    requestAnimationFrame( animate );
+	render();		
+	update();
+}
+
+function update() {
+	controls.update();
+	stats.update();
+}
+
+function render() {
+	renderer.render( scene, camera );
+}
+
+function geo2line( geo ) {
+    var geometry = new THREE.Geometry();
+    var vertices = geometry.vertices;
+	
+	for ( i = 0; i < geo.faces.length; i++ ) {
+        var face = geo.faces[ i ];
+        if ( face instanceof THREE.Face3 ) {
+            var a = geo.vertices[ face.a ].clone();
+			var b = geo.vertices[ face.b ].clone();
+			var c = geo.vertices[ face.c ].clone();
+            vertices.push( a,b, b,c, c,a );
+        } 
+		else if ( face instanceof THREE.Face4 ) {
+			var a = geo.vertices[ face.a ].clone();
+			var b = geo.vertices[ face.b ].clone();
+			var c = geo.vertices[ face.c ].clone();
+			var d = geo.vertices[ face.d ].clone();
+            vertices.push( a,b, b,c, c,d, d,a );
+        }
+    }
+    geometry.computeLineDistances();
+    return geometry;
+}
+
+function onWindowResize() {
+	camera.aspect = window.innerWidth / window.innerHeight;
+	camera.updateProjectionMatrix();
+	renderer.setSize( window.innerWidth, window.innerHeight );
+}
+
+</script>
+
+</body>
+</html>
