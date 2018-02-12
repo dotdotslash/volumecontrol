@@ -2,45 +2,121 @@
 <!doctype html>
 <html lang="en">
 <head>
-	<title>Raycast</title>
+	<title>Drag</title>
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+	
+	<script src="js/three.js"></script>
+	<script src="js/Detector.js"></script>
+	<script src="js/stats.min.js"></script>
+	<script src="js/controls/OrbitControls.js"></script>
+	<script src="js/renderers/CanvasRenderer.js"></script>
+
+	<script src="js/controls/DragControls.js"></script>
+	
+	<style>
+	
+		audio {
+			visibility: hidden;
+		}
+		.play-btn {
+			position:fixed;
+			right: 20px;
+			top:20px;
+			width: 20px;
+			height: 20px;
+			cursor: pointer;
+			
+		}
+		
+		.play-btn.deactive {
+			width: 0; 
+			height: 0; 
+			border-top: 10px solid transparent;
+			border-bottom: 10px solid transparent;
+			border-left: 20px solid #FFF;
+		}
+		.play-btn:hover.deactive {
+			border-left: 20px solid #CCC;
+		}
+		
+		.play-btn.deactive .pause{
+			display:none;
+		}
+		
+		.pause {
+			position: absolute;
+			top: 0;
+			width: 6px;
+			height: 20px;
+			background: #FFF;
+			
+		}
+		.play-btn:hover .pause {
+			background: #CCC;
+		}
+		.pause-l {
+			left: 0;
+		}
+		.pause-r {
+			left: 12px;
+		}
+		
+		#display {
+			position:fixed;
+			left: 20px;
+			top:20px;
+			color: #FFF;
+			font-family: monospace;
+		}
+		
+	</style>
+	
 </head>
 <body>
 
-<script src="js/three.js"></script>
-<script src="js/Detector.js"></script>
-<script src="js/stats.min.js"></script>
-<script src="js/controls/OrbitControls.js"></script>
-<script src="js/renderers/CanvasRenderer.js"></script>
 
-
-
-<div id="ThreeJS" style="position: absolute; left:0px; top:0px"></div>
-<script>
-
-// standard global variables
-var container, scene, camera, renderer, controls, raycaster, stats;
-var clock = new THREE.Clock();
-// custom global variables
-var cube;
-var plane;
-var objects = [];
-
-var objHovered = false;
+	<div id="ThreeJS" style="position: absolute; left:0px; top:0px"></div>
 	
-var raycaster = new THREE.Raycaster();
-var mouse = new THREE.Vector2(), INTERSECTED;
+	<div id="display">100</div>		
+			
+	<div id="switch" class="play-btn deactive">
+		<div class="pause pause-l"></div>
+		<div class="pause pause-r"></div>
+	</div>	
+	
+	<audio id="audio-player" controls loop>
+	  <source src="assets/DavidCutterMusicVol2-03.mp3" type="audio/mpeg">
+	</audio>
+		
+<script>
+	
+	
+// standard global variables
+var container, scene, camera, renderer, controls, stats;
+
+var axis;
+var cubeOutline;
+var cubeDimensions = [1,1,1]; //xyz
+var soundVolume = 1;
+var fakeCube = [];
+var objHovered = false;
+
+var music = document.getElementById("audio-player");
+var volumeDisplay = document.getElementById( 'display' );
+
 
 init();
 animate();
 
 // FUNCTIONS 		
 function init() {
+	
+	//Set Default Sound Volume
+	music.volume = soundVolume;
+	
 	// SCENE
 	scene = new THREE.Scene();
-	
-	
 	
 	// CAMERA
 	var SCREEN_WIDTH = window.innerWidth, SCREEN_HEIGHT = window.innerHeight;
@@ -49,10 +125,6 @@ function init() {
 	scene.add(camera);
 	camera.position.set(250,250,250);
 	camera.lookAt(scene.position);	
-	
-	// Interaction
-	var raycaster = new THREE.Raycaster();
-	var mouse = new THREE.Vector2();
 	
 	// RENDERER
 	if ( Detector.webgl ) {
@@ -70,28 +142,19 @@ function init() {
 
 
 	// CONTROLS
-	// = new THREE.OrbitControls( camera, renderer.domElement );
+	controls = new THREE.OrbitControls( camera, renderer.domElement );
 	
 	// STATS
+	// Commenting out for testing
+	/*
 	stats = new Stats();
 	stats.domElement.style.position = 'absolute';
 	stats.domElement.style.bottom = '0px';
 	stats.domElement.style.zIndex = 100;
 	container.appendChild( stats.domElement );
+	*/
 	
-	// LIGHT
-	var light = new THREE.PointLight(0xffffff);
-	light.position.set(0,250,0);
-	scene.add(light);
-	
-	// FLOOR
-	// don't add floor -- easier to view result.
-	scene.fog = new THREE.FogExp2( 0x9999ff, 0.00025 );
-	
-	//
 
-	
-	
 	////////////
 	// LIGHTS //
 	////////////
@@ -109,130 +172,216 @@ function init() {
 		scene.add( lights[ 2 ] );
 	
 	
-	////////////
+	//////////
 	// XYZ //
-	////////////
-	
-	var lineGeometry = new THREE.Geometry();
-	var vertArray = lineGeometry.vertices;
-	vertArray.push( new THREE.Vector3(0, 0, 0), new THREE.Vector3(100, 0, 0) );
-	lineGeometry.computeLineDistances();
-	var lineMaterial = new THREE.LineBasicMaterial( { color: 0xFF0000 } );
-	var line = new THREE.Line( lineGeometry, lineMaterial );
-	scene.add(line);
-	
-	var lineGeometry = new THREE.Geometry();
-	var vertArray = lineGeometry.vertices;
-	vertArray.push( new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 100, 0) );
-	lineGeometry.computeLineDistances();
-	var lineMaterial = new THREE.LineBasicMaterial( { color: 0x00FF00 } );
-	var line = new THREE.Line( lineGeometry, lineMaterial );
-	scene.add(line);
-	
-	var lineGeometry = new THREE.Geometry();
-	var vertArray = lineGeometry.vertices;
-	vertArray.push( new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 100) );
-	lineGeometry.computeLineDistances();
-	var lineMaterial = new THREE.LineBasicMaterial( { color: 0x0000FF } );
-	var line = new THREE.Line( lineGeometry, lineMaterial );
-	scene.add(line);
+	////////
+	// For axis reference	
+	drawAxis();
 
-	var lineGeometry = new THREE.Geometry();
-	var vertArray = lineGeometry.vertices;
-	vertArray.push( new THREE.Vector3(0, 0, 0), new THREE.Vector3(100, 100, 100) );	lineGeometry.computeLineDistances();
-	var lineMaterial = new THREE.LineDashedMaterial( { color: 0x00FFFF, dashSize: 4, gapSize: 2 } );
-	var line = new THREE.Line( lineGeometry, lineMaterial );
-	scene.add(line);
-		
 	
 	
 	
-	////////////
+	///////////////
 	// Wire BOX //
-	////////////
-
+	/////////////
 	var cubeGeometry = new THREE.CubeGeometry( 100, 100, 100 );
 	// use LineBasicMaterial if no dashes are desired
 	var dashMaterial = new THREE.LineDashedMaterial( { color: 0xFFFFFF, dashSize: 2, gapSize: 3 } );
-	cube = new THREE.Line( geo2line(cubeGeometry), dashMaterial, THREE.LineSegments );
-	//cube.position.set(25,25,25);
-	scene.add(cube);
+	cubeOutline = new THREE.Line( geo2line(cubeGeometry), dashMaterial, THREE.LineSegments );
+	scene.add(cubeOutline);
+		
 	
-	window.addEventListener( 'resize', onWindowResize, false );
 	
-	////////////
-	// PLANE //
-	////////////
+	///////////////////
+	// GEO & MESH ////
+	/////////////////
 	var planeGeo = new THREE.PlaneGeometry( 100, 100);
+	
+	
+	// Wall Panels //
+	var wallMaterial = new THREE.MeshPhongMaterial( {
+					color: 0xCCCCCC,
+					side: THREE.DoubleSide,
+				} );
+	
+	var wallLeft = new THREE.Mesh( planeGeo, wallMaterial );
+		wallLeft.position.set( 0, 0, -50 );		
+		scene.add( wallLeft );
+	
+	var wallBottom = new THREE.Mesh( planeGeo, wallMaterial );
+		wallBottom.position.set( 0, -50, 0 );
+		wallBottom.rotation.x = Math.PI / 2;
+		scene.add( wallBottom );	
+	
+	var wallRight= new THREE.Mesh( planeGeo, wallMaterial );
+		wallRight.position.set( -50, 0, 0 );
+		wallRight.rotation.y = Math.PI / 2;
+		scene.add( wallRight );							
+		
+	
+	//////////////////////
+	// Volume Panels ////
+	////////////////////
 	var planeMaterial = new THREE.MeshPhongMaterial( {
 					color: 0x156289,
 					emissive: 0x072534,
-					side: THREE.DoubleSide,
-					flatShading: true
-				} );
-
-	plane = new THREE.Mesh( planeGeo, planeMaterial );
-	scene.add( plane );
-	objects.push(plane);
+					side: THREE.DoubleSide
+				} );	
+	var panelLeft = new THREE.Mesh( planeGeo, planeMaterial );
+		panelLeft.position.set( 0, 0, 50 );
+		panelLeft.axisLimited = 'z';
+		
+	var panelTop = new THREE.Mesh( planeGeo, planeMaterial );
+		panelTop.position.set( 0, 50, 0 );
+		panelTop.rotation.x = Math.PI / 2;
+		panelTop.axisLimited = 'y';
+	
+	var panelRight = new THREE.Mesh( planeGeo, planeMaterial );
+		panelRight.position.set( 50, 0, 0 );
+		panelRight.rotation.y = Math.PI / 2;
+		panelRight.axisLimited = 'x';
+	
+	scene.add( panelTop );
+	scene.add( panelRight );
+	scene.add( panelLeft );
+	
+	fakeCube.push(panelTop);
+	fakeCube.push(panelRight);
+	fakeCube.push(panelLeft);
 	
 	
-    document.addEventListener( 'mousedown', onDocumentMouseDown, false );
-    document.addEventListener( 'mouseup', onDocumentMouseUp, false );
-	window.addEventListener( 'mousemove', onMouseMove, false );
+
+	////////////////////
+	// Interaction ////
+	//////////////////
+	function dragHappening(event) {
+		animateCube();
+		music.volume = calcVolume();
+		volumeDisplay.innerText = formatVolPercentage();
+		
+	}
+		
+	//////////////////
+	// The Magic ////
+	////////////////	
+	function animateCube() {
+		
+		fakeCube.forEach(function(panel){			
+			if(panel.axisLimited === 'x') {
+				//Postions
+				panel.position.x = limitAxis(panel.position.x);	
+				panel.position.y = calcPosition(cubeDimensions[1]);			
+				panel.position.z = calcPosition(cubeDimensions[2]);			
+				
+				//Scale	
+				cubeDimensions[0] = calcScale(panel.position.x);
+				panel.scale.y = cubeDimensions[1];
+				panel.scale.x = cubeDimensions[2];
+			} else if(panel.axisLimited === 'y') {
+				//Postions
+				panel.position.x = calcPosition(cubeDimensions[0]);
+				panel.position.y = limitAxis(panel.position.y);
+				panel.position.z = calcPosition(cubeDimensions[2]);	
+				
+				//Scale	
+				panel.scale.x = cubeDimensions[0];
+				cubeDimensions[1] = calcScale(panel.position.y); 
+				panel.scale.y = cubeDimensions[2];
+								
+			} else if(panel.axisLimited === 'z') {
+				//Postions
+				panel.position.x = calcPosition(cubeDimensions[0]);
+				panel.position.y = calcPosition(cubeDimensions[1]);			
+				panel.position.z = limitAxis(panel.position.z);
+								
+				//Scale	
+				panel.scale.x = cubeDimensions[0];
+				panel.scale.y = cubeDimensions[1];
+				cubeDimensions[2] = calcScale(panel.position.z); 
+			}
+		});
+	}
 	
-	
-}
-
-var clicked = false;
-var prevMouseX;
-var prevMouseY;
-function onDocumentMouseDown( e ) {
-	e.preventDefault();
-	clicked = true;
-	prevMouseX = mouse.x;
-}
-
-function onDocumentMouseUp( e ) {
-	e.preventDefault();
-	clicked = false;
-}
-
-
-function onMouseMove( e ) {
-	mouse.x = ( e.clientX / window.innerWidth ) * 2 - 1;
-	mouse.y = - ( e.clientY / window.innerHeight ) * 2 + 1;
-	
-	if(objHovered && clicked){
-		console.log('x: '+mouse.x, 'y: '+mouse.y);
-			console.log(clicked);
-			console.log(plane);		
-			plane.position.z += 1;	
-	} 
-}
-
-function onDrag(e) {
-	
-	raycaster.setFromCamera( mouse, camera );
-	var intersects = raycaster.intersectObjects( objects );
-	
-
-	if ( intersects.length > 0 ) {
-		if ( INTERSECTED != intersects[ 0 ].object ) {
-			if ( INTERSECTED ) INTERSECTED.material.emissive.setHex( INTERSECTED.currentHex );
-			INTERSECTED = intersects[ 0 ].object;
-			INTERSECTED.currentHex = INTERSECTED.material.emissive.getHex();
-			INTERSECTED.material.emissive.setHex( 0xff0000 );
-			objHovered = true;			
-		}
-	} else {
-		if ( INTERSECTED ) {
-			INTERSECTED.material.emissive.setHex( INTERSECTED.currentHex );
-			INTERSECTED = null;
-			objHovered = false;
+	function limitAxis(value) {
+		if(value >= 50) {
+			return 50
+		} else if (value <= -50) {
+			return -50
+		} else {
+			return value;
 		}
 	}
-}
+	
+	function calcScale(value) {
+		//Prevent Scale zeroing out
+		var newScale = (value+50)*0.01;
+		if(newScale < .005) {
+			return .005;
+		} else {
+			return newScale;
+		}
+	}
+	
+	function calcPosition(scale) {
+		return scale*50 -50;
+	}
+	
+	function calcVolume(){
+		return cubeDimensions[0]*cubeDimensions[1]*cubeDimensions[2];
+	}
+	
+	function dragStartCallback(event) {
+		controls.enabled = false;
+	}
 
+	function dragendCallback(event) {
+	   controls.enabled = true;
+	}
+	
+	function formatVolPercentage() {
+		var volPer = calcVolume()* 100;
+		return volPer.toFixed(0);
+	}
+	
+	
+	//////////////////////
+	// Event Listeners //
+	////////////////////
+	var dragControls = new THREE.DragControls(fakeCube, camera, renderer.domElement);
+	dragControls.addEventListener( 'drag', dragHappening );
+	dragControls.addEventListener( 'dragstart', dragStartCallback );
+	dragControls.addEventListener( 'dragend', dragendCallback );
+	
+	window.addEventListener( 'resize', onWindowResize, false );
+	
+	axis.visible = false;
+	var tog = true;
+	document.body.addEventListener('keypress', function(e) {
+		if(e.keyCode == 32) {
+			if(!tog) {
+				axis.visible = false;
+				tog = true;
+			} else {
+				axis.visible = true;
+				tog = false;
+			}
+		}
+	});
+	
+	var switchTog = true;
+	document.getElementById("switch").addEventListener("click", function(){
+		if(!switchTog) {
+			this.classList.add("deactive");
+			music.pause();
+			switchTog = true;
+		} else {
+			this.classList.remove("deactive");
+			music.play();
+			switchTog = false;
+		}
+	});
+		
+}
 
 function animate() {
     requestAnimationFrame( animate );
@@ -241,13 +390,8 @@ function animate() {
 }
 
 function update() {
-	//controls.update();
-	stats.update();
-	onDrag();
-	//plane.position.x += 1;
-	//plane.position.y += 1;
-	//plane.position.z += 1;
-	
+	controls.update();
+	//stats.update();
 }
 
 function render() {
@@ -276,6 +420,39 @@ function geo2line( geo ) {
     }
     geometry.computeLineDistances();
     return geometry;
+}
+
+function drawAxis() {
+	var lineGeometry = new THREE.Geometry();
+	var vertArray = lineGeometry.vertices;
+	vertArray.push( new THREE.Vector3(0, 0, 0), new THREE.Vector3(100, 0, 0) );
+	lineGeometry.computeLineDistances();
+	var lineMaterial = new THREE.LineBasicMaterial( { color: 0xFF0000 } );
+	axis = new THREE.Line( lineGeometry, lineMaterial );
+	scene.add(axis);
+	
+	var lineGeometry = new THREE.Geometry();
+	var vertArray = lineGeometry.vertices;
+	vertArray.push( new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 100, 0) );
+	lineGeometry.computeLineDistances();
+	var lineMaterial = new THREE.LineBasicMaterial( { color: 0x00FF00 } );
+	var line = new THREE.Line( lineGeometry, lineMaterial );
+	axis.add(line);
+	
+	var lineGeometry = new THREE.Geometry();
+	var vertArray = lineGeometry.vertices;
+	vertArray.push( new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 100) );
+	lineGeometry.computeLineDistances();
+	var lineMaterial = new THREE.LineBasicMaterial( { color: 0x0000FF } );
+	var line = new THREE.Line( lineGeometry, lineMaterial );
+	axis.add(line);
+
+	var lineGeometry = new THREE.Geometry();
+	var vertArray = lineGeometry.vertices;
+	vertArray.push( new THREE.Vector3(0, 0, 0), new THREE.Vector3(100, 100, 100) );	lineGeometry.computeLineDistances();
+	var lineMaterial = new THREE.LineDashedMaterial( { color: 0x00FFFF, dashSize: 4, gapSize: 2 } );
+	var line = new THREE.Line( lineGeometry, lineMaterial );
+	axis.add(line);
 }
 
 function onWindowResize() {
